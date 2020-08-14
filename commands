@@ -1,9 +1,0 @@
-# Subir el repo a git 
-https://docs.github.com/en/github/importing-your-projects-to-github/adding-an-existing-project-to-github-using-the-command-line
-
-# arregle el push a git fast-forward con 
-git push -f origin master
-
-# Commits a git 
-https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/commandlinegit.html
-
