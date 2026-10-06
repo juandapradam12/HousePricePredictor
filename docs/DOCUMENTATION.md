@@ -15,11 +15,11 @@ Given tabular attributes of residential properties in **Ames, Iowa**, estimate s
 | Train | 1,460 labeled homes (`data/train.csv`) |
 | Test | 1,459 unlabeled rows (`data/test.csv`) for Kaggle-style submission |
 | Raw attributes | ~80 columns (numeric + categorical) |
-| Target transform | \(\log(1 + \text{SalePrice})\) during training; metrics also reported via `expm1` |
+| Target transform | $\log(1 + \text{SalePrice})$ during training; metrics also reported via `expm1` |
 
 **Portfolio framing:** derive classical estimators *and* run a modern pipeline (leakage-safe features → tuned boosting → stack → SHAP → ship).
 
-Default numeric correlates (\(|r| \ge 0.5\) with `SalePrice`):
+Default numeric correlates ($|r| \ge 0.5$ with `SalePrice`):
 
 `OverallQual`, `GrLivArea`, `GarageCars`, `GarageArea`, `TotalBsmtSF`, `1stFlrSF`, `FullBath`, `TotRmsAbvGrd`, `YearBuilt`, `YearRemodAdd`.
 
@@ -31,56 +31,56 @@ The production feature set expands this with ordinals, OOF neighborhood encoding
 
 ### 2.1 Ordinary least squares
 
-\[
+$$
 w_{\mathrm{LS}} = (X^\top X)^{-1} X^\top y
-\]
+$$
 
-**Implementation:** `np.linalg.lstsq` on an intercept-augmented design (equivalent when \(X\) has full column rank; better conditioned than an explicit inverse).
+**Implementation:** `np.linalg.lstsq` on an intercept-augmented design (equivalent when $X$ has full column rank; better conditioned than an explicit inverse).
 
 **API:** `LeastSquaresRegressor`, `least_squares_weights`.
 
 ### 2.2 Ridge regression
 
-\[
+$$
 w_{\mathrm{RR}} = (X^\top X + \lambda I)^{-1} X^\top y
-\]
+$$
 
 - Features z-scored; target mean-centered inside `RidgeRegressor`
 - Intercept **unpenalized** (matches scikit-learn)
-- \(\lambda\) via **5-fold CV** minimizing log-target RMSE (`select_lambda_cv`)
+- $\lambda$ via **5-fold CV** minimizing log-target RMSE (`select_lambda_cv`)
 
 **API:** `RidgeRegressor`, `ridge_regression_weights`, `select_lambda_cv`.
 
 ### 2.3 Bayesian linear regression (conjugate Gaussian)
 
-\[
+$$
 p(w) = \mathcal{N}(0, \lambda^{-1} I), \qquad
 p(y \mid w, X) = \mathcal{N}(Xw, \sigma^2 I)
-\]
+$$
 
-\[
+$$
 \Sigma = \big(\lambda I + \sigma^{-2} X^\top X\big)^{-1}, \qquad
 \mu = \big(\lambda \sigma^2 I + X^\top X\big)^{-1} X^\top y
-\]
+$$
 
-\[
+$$
 \hat\sigma^2 = \frac{1}{n-d}\sum_{i=1}^{n}(y_i - x_i^\top w_{\mathrm{LS}})^2
-\]
+$$
 
 Predictive:
 
-\[
+$$
 \mu_0 = x_0^\top \mu, \qquad
 \sigma_0^2 = \sigma^2 + x_0^\top \Sigma x_0
-\]
+$$
 
 **Bug fixes vs. original notebooks**
 
 | Issue | Fix |
 |---|---|
-| MAP used \(\lambda\sigma\) instead of \(\lambda\sigma^2\) | `map_coefficients` |
-| \(\Sigma\) used \(1/\sigma\) vs \(1/\sigma^2\) | `posterior_covariance` |
-| Predict helper missing \(\sigma\) | Class API stores \(\sigma^2\) on the posterior |
+| MAP used $\lambda\sigma$ instead of $\lambda\sigma^2$ | `map_coefficients` |
+| $\Sigma$ used $1/\sigma$ vs $1/\sigma^2$ | `posterior_covariance` |
+| Predict helper missing $\sigma$ | Class API stores $\sigma^2$ on the posterior |
 | Raw-scale isotropic prior | Features standardized in `fit` |
 
 **API:** `BayesianLinearRegression.predict(..., return_std=True)`.
@@ -99,10 +99,10 @@ NUTS sampling for illustration / non-conjugate workflows:
 
 Varying intercept with partial pooling:
 
-\[
+$$
 y_i \sim \mathcal{N}(\alpha_{\mathrm{neigh}[i]} + x_i^\top \beta,\ \sigma), \qquad
 \alpha_j \sim \mathcal{N}(\mu_\alpha,\ \tau_\alpha)
-\]
+$$
 
 **API:** `fit_hierarchical_neighborhood`, `hierarchical_predict_mean` (notebook `09`).
 

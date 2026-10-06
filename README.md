@@ -1,12 +1,14 @@
 # House Price Predictor
 
-### Learn the math. Ship the pipeline. Explain the prediction.
+### From the algebra of a price to a prediction on display.
 
-A portfolio-grade take on the [Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) price problem: **from-scratch linear & Bayesian estimators**, leakage-safe feature engineering, **Optuna-tuned LightGBM**, a **Ridge + LightGBM stack**, SHAP explanations, calibrated uncertainty, and a Dockerized Streamlit demo — all tested and CI-wired.
+House-price modeling on the [Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) dataset: **from-scratch linear & Bayesian estimators**, leakage-safe feature engineering, **Optuna-tuned LightGBM**, a **Ridge + LightGBM stack**, SHAP explanations, calibrated uncertainty, and a Dockerized Streamlit demo — with tests and CI.
 
 <p align="center">
   <img src="figures/saleprice_relationships.png" alt="Sale price vs living area and year built" width="900"/>
 </p>
+
+<p align="center"><em>Sale price rises with living area and with newer construction — two of the strongest raw signals in the data.</em></p>
 
 ---
 
@@ -14,19 +16,17 @@ A portfolio-grade take on the [Ames Housing](https://www.kaggle.com/c/house-pric
 
 **Question:** given a house’s attributes in Ames, Iowa, what should it sell for — and how sure are we?
 
-This repo answers that end-to-end:
+The project walks that question end-to-end:
 
-| Layer | What you get |
+| Layer | What is in the repo |
 |---|---|
-| **Understanding** | OLS, Ridge, conjugate Bayes, and MCMC implemented so you can see the algebra |
-| **Accuracy** | Engineered features + stack → hold-out **R² ≈ 0.91**, RMSE ≈ **$21.4k** |
-| **Trust** | Bayesian predictive coverage ≈ **94%** at nominal 95%; quantile bands for trees |
-| **Explainability** | SHAP beeswarm & bar plots for the boosted model |
-| **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker one-liner |
+| **Models** | OLS, Ridge, conjugate Bayes, and MCMC implemented from the estimators |
+| **Accuracy** | Engineered features + stack → hold-out **R² ≈ 0.91**, RMSE ≈ **\$21.4k** |
+| **Uncertainty** | Bayesian predictive coverage ≈ **94%** at nominal 95%; quantile bands for trees |
+| **Explanation** | SHAP beeswarm & bar plots for the boosted model |
+| **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker image |
 
-If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **story you can defend in an interview** — math → leakage → tuning → stack → explain → ship — this is the repo.
-
-## Visual walkthrough
+## Figures
 
 ### Data & relationships
 
@@ -34,7 +34,7 @@ If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **s
   <img src="figures/eda_corr_heatmap.png" alt="Correlation heatmap of SalePrice and top features" width="720"/>
 </p>
 
-<p align="center"><em>Strong linear signal from quality, living area, garage, and year fields — the base of the feature ladder.</em></p>
+**Correlation heatmap.** Pearson associations between `SalePrice` and the strongest numeric fields. Overall quality, above-grade living area, garage size, basement area, and year built sit at the top of the ladder — the starting point before ordinals, neighborhood encoding, and one-hots enter the pipeline.
 
 ### Classical fits
 
@@ -42,39 +42,47 @@ If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **s
   <img src="figures/ols_fit.png" alt="OLS fit of SalePrice vs GrLivArea" width="720"/>
 </p>
 
+**Ordinary least squares.** A closed-form line of `SalePrice` on living area alone. Simple, readable, and already enough to show the main size–price slope (and the scatter that a single feature cannot absorb).
+
 <p align="center">
   <img src="figures/ridge_cv_curve.png" alt="Ridge lambda selection via cross-validation" width="640"/>
 </p>
 
-<p align="center"><em>From-scratch OLS on living area, and CV-tuned Ridge λ on the log target.</em></p>
+**Ridge λ via cross-validation.** Validation RMSE on the log target as a function of the L2 penalty. The dashed line marks the λ chosen by 5-fold CV — shrinkage when many correlated features sit in the design matrix.
 
-### Uncertainty you can check
+### Uncertainty, checked
 
 <p align="center">
   <img src="figures/bayesian_uncertainty.png" alt="Bayesian predictive mean with uncertainty band" width="720"/>
 </p>
 
+**Bayesian predictive band.** Posterior predictive mean ± 2σ for a conjugate Gaussian linear model (living area on the x-axis, year built held at its mean). The shaded region is the model’s stated uncertainty on `log1p(SalePrice)`, not just a point fit.
+
 <p align="center">
   <img src="figures/calibration_curve.png" alt="Bayesian predictive calibration curve" width="480"/>
 </p>
 
-<p align="center"><em>Conjugate Bayesian predictive bands, with empirical coverage close to the diagonal (≈94% at nominal 95%).</em></p>
+**Calibration curve.** Nominal coverage (x) versus empirical coverage on hold-out (y). Points near the diagonal mean the Bayesian intervals land about as often as they claim — here ~94% at a nominal 95%.
 
-### Explain & intervalize the tree model
+### What the tree model uses — and how wide it is
 
 <p align="center">
   <img src="figures/shap_bar.png" alt="SHAP mean absolute feature importance" width="700"/>
 </p>
 
+**SHAP mean |impact|.** Global importance for the LightGBM fit: which engineered features move the prediction most, on average, across the sample.
+
 <p align="center">
   <img src="figures/shap_summary.png" alt="SHAP beeswarm summary plot" width="700"/>
 </p>
+
+**SHAP beeswarm.** Each point is one house. Color is feature value (low → high); horizontal position is the effect on the model output. High quality / large area push price up; the spread shows how uneven that effect is across listings.
 
 <p align="center">
   <img src="figures/quantile_intervals.png" alt="LightGBM quantile prediction intervals vs living area" width="720"/>
 </p>
 
-<p align="center"><em>SHAP shows what drives LightGBM; quantile bands give non-parametric 5–95% intervals.</em></p>
+**Quantile intervals (5–95%).** Non-parametric bands from quantile LightGBM against living area: median prediction as the line, shaded range as the interval, scatter as hold-out prices. A second view of uncertainty when conjugacy is dropped.
 
 ### Residual health
 
@@ -82,33 +90,33 @@ If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **s
   <img src="figures/diagnostics_residuals.png" alt="Residual diagnostics for engineered OLS" width="900"/>
 </p>
 
-<p align="center"><em>Residuals, histogram, and influence for the engineered linear model.</em></p>
+**Diagnostics for engineered OLS.** Left: residuals vs fitted (structure / heteroscedasticity). Center: residual histogram (approximate symmetry around zero). Right: Cook’s distance vs leverage (influential points).
 
-## Results that sell the story
+## Results
 
-Hold-out **20%** of train (seed 42). Rebuild anytime with `python scripts/run_comparison.py`.
+Hold-out **20%** of train (seed 42). Numbers below come from `python scripts/run_comparison.py`.
 
-### 1. Features beat algorithms (ablation on OLS)
+### Feature ablation (OLS)
 
 | Feature set | RMSE | MAE | R² |
 |---|---:|---:|---:|
-| Living area + year built only | $44.2k | $28.1k | 0.616 |
-| Top numeric correlates (\|r\| ≥ 0.5) | $28.2k | $19.3k | 0.844 |
-| **Engineered + OOF encoding + one-hots (46 feats)** | **$21.9k** | **$15.3k** | **0.905** |
+| Living area + year built only | \$44.2k | \$28.1k | 0.616 |
+| Top numeric correlates (\|r\| ≥ 0.5) | \$28.2k | \$19.3k | 0.844 |
+| **Engineered + OOF encoding + one-hots (46 feats)** | **\$21.9k** | **\$15.3k** | **0.905** |
 
-Most of the jump is **feature design**, not model choice.
+Most of the gain comes from the feature set, not from switching the estimator.
 
-### 2. Stack edges the field
+### Model comparison
 
 | Model | RMSE | MAE | R² |
 |---|---:|---:|---:|
-| **Stack (Ridge + LightGBM)** | **$21.4k** | **$14.7k** | **0.910** |
-| Ridge (CV-tuned λ) | $21.7k | $15.3k | 0.908 |
-| Elastic Net / Lasso | $21.9k | $15.3k | 0.906 |
-| OLS / Bayesian MAP | $21.9k | $15.3k | 0.905 |
-| LightGBM (Optuna) | $23.6k | $15.1k | 0.891 |
+| **Stack (Ridge + LightGBM)** | **\$21.4k** | **\$14.7k** | **0.910** |
+| Ridge (CV-tuned λ) | \$21.7k | \$15.3k | 0.908 |
+| Elastic Net / Lasso | \$21.9k | \$15.3k | 0.906 |
+| OLS / Bayesian MAP | \$21.9k | \$15.3k | 0.905 |
+| LightGBM (Optuna) | \$23.6k | \$15.1k | 0.891 |
 
-Production artifact `artifacts/models/best_model.joblib` stores the **best hold-out R²** model (currently the stack).
+`artifacts/models/best_model.joblib` stores the best hold-out R² model (currently the stack).
 
 ## Quick start
 
@@ -129,7 +137,7 @@ streamlit run app/streamlit_app.py  # interactive demo
 docker compose up --build
 ```
 
-Tip: `HPP_FAST=1 python scripts/run_comparison.py` shortens Optuna (used in CI).
+`HPP_FAST=1` shortens Optuna in `scripts/run_comparison.py` (CI smoke mode).
 
 ## Repository map
 
@@ -176,7 +184,7 @@ imputation         train medians only
 
 | Model | Why it’s here |
 |---|---|
-| **OLS / Ridge / Bayesian MAP** | Closed-form estimators you can derive and debug |
+| **OLS / Ridge / Bayesian MAP** | Closed-form estimators, derived and checked against sklearn |
 | **MCMC (PyMC 5)** | Posterior sampling when conjugacy is dropped |
 | **Hierarchical Bayes** | Neighborhood partial pooling |
 | **Lasso / Elastic Net** | Sparse shrinkage with CV |
