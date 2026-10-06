@@ -50,7 +50,7 @@ OLS, Ridge (CV), Bayesian MAP, Lasso / Elastic Net, Optuna-tuned LightGBM, **Rid
 3. USD metrics via `expm1`  
 4. Bayesian calibration + LightGBM quantile coverage recorded in `artifacts/model_comparison.json`  
 
-**Indicative hold-out (rebuild to refresh):** stack R² ≈ 0.91, RMSE ≈ $21.4k; engineered OLS R² ≈ 0.91; Bayesian 95% coverage ≈ 0.94.
+**Indicative hold-out (rebuild to refresh):** stack R² ≈ 0.91, RMSE ≈ \$21.4k; engineered OLS R² ≈ 0.91; Bayesian 95% coverage ≈ 0.94.
 
 ## Uncertainty
 

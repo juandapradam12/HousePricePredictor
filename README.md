@@ -21,7 +21,7 @@ The project walks that question end-to-end:
 | Layer | What is in the repo |
 |---|---|
 | **Models** | OLS, Ridge, conjugate Bayes, and MCMC implemented from the estimators |
-| **Accuracy** | Engineered features + stack → hold-out **R² ≈ 0.91**, RMSE ≈ **$21.4k** |
+| **Accuracy** | Engineered features + stack → hold-out **R² ≈ 0.91**, RMSE ≈ **\$21.4k** |
 | **Uncertainty** | Bayesian predictive coverage ≈ **94%** at nominal 95%; quantile bands for trees |
 | **Explanation** | SHAP beeswarm & bar plots for the boosted model |
 | **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker image |
@@ -100,9 +100,9 @@ Hold-out **20%** of train (seed 42). Numbers below come from `python scripts/run
 
 | Feature set | RMSE | MAE | R² |
 |---|---:|---:|---:|
-| Living area + year built only | $44.2k | $28.1k | 0.616 |
-| Top numeric correlates (\|r\| ≥ 0.5) | $28.2k | $19.3k | 0.844 |
-| **Engineered + OOF encoding + one-hots (46 feats)** | **$21.9k** | **$15.3k** | **0.905** |
+| Living area + year built only | \$44.2k | \$28.1k | 0.616 |
+| Top numeric correlates (\|r\| ≥ 0.5) | \$28.2k | \$19.3k | 0.844 |
+| **Engineered + OOF encoding + one-hots (46 feats)** | **\$21.9k** | **\$15.3k** | **0.905** |
 
 Most of the gain comes from the feature set, not from switching the estimator.
 
@@ -110,11 +110,11 @@ Most of the gain comes from the feature set, not from switching the estimator.
 
 | Model | RMSE | MAE | R² |
 |---|---:|---:|---:|
-| **Stack (Ridge + LightGBM)** | **$21.4k** | **$14.7k** | **0.910** |
-| Ridge (CV-tuned λ) | $21.7k | $15.3k | 0.908 |
-| Elastic Net / Lasso | $21.9k | $15.3k | 0.906 |
-| OLS / Bayesian MAP | $21.9k | $15.3k | 0.905 |
-| LightGBM (Optuna) | $23.6k | $15.1k | 0.891 |
+| **Stack (Ridge + LightGBM)** | **\$21.4k** | **\$14.7k** | **0.910** |
+| Ridge (CV-tuned λ) | \$21.7k | \$15.3k | 0.908 |
+| Elastic Net / Lasso | \$21.9k | \$15.3k | 0.906 |
+| OLS / Bayesian MAP | \$21.9k | \$15.3k | 0.905 |
+| LightGBM (Optuna) | \$23.6k | \$15.1k | 0.891 |
 
 `artifacts/models/best_model.joblib` stores the best hold-out R² model (currently the stack).
 
