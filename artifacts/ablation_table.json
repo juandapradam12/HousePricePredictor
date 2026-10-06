@@ -1,0 +1,33 @@
+{
+  "ablation": [
+    {
+      "model": "Ablation: OLS (GrLivArea+YearBuilt)",
+      "rmse_usd": 44163.0669304978,
+      "mae_usd": 28056.097139251757,
+      "r2_usd": 0.615878946197769,
+      "rmse_log": 0.21115477428334378,
+      "r2_log": 0.6617711269038719,
+      "feature_set": "2_raw"
+    },
+    {
+      "model": "Ablation: OLS (corr>=0.5)",
+      "rmse_usd": 28151.130232362724,
+      "mae_usd": 19318.524258871228,
+      "r2_usd": 0.8439221290449314,
+      "rmse_log": 0.1501796708439975,
+      "r2_log": 0.8289074244414047,
+      "feature_set": "corr_0.5",
+      "n_features": 10
+    },
+    {
+      "model": "Ablation: OLS (engineered+OOF+onehot)",
+      "rmse_usd": 21939.374668918757,
+      "mae_usd": 15309.513657649162,
+      "r2_usd": 0.9052022236871885,
+      "rmse_log": 0.12231215718424093,
+      "r2_log": 0.8865124764253394,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
+    }
+  ]
+}
