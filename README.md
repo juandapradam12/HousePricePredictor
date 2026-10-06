@@ -26,7 +26,7 @@ The project walks that question end-to-end:
 | **Explanation** | SHAP beeswarm & bar plots for the boosted model |
 | **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker image |
 
-## Visual walkthrough
+## Figures
 
 ### Data & relationships
 
@@ -48,7 +48,7 @@ The project walks that question end-to-end:
   <img src="figures/ridge_cv_curve.png" alt="Ridge lambda selection via cross-validation" width="640"/>
 </p>
 
-**Ridge λ via cross-validation.** Validation RMSE on the log target as a function of the L2 penalty. The dashed line marks the λ chosen by 5-fold CV — shrinkage that keeps the linear story stable when many correlated features sit in the design matrix.
+**Ridge λ via cross-validation.** Validation RMSE on the log target as a function of the L2 penalty. The dashed line marks the λ chosen by 5-fold CV — shrinkage when many correlated features sit in the design matrix.
 
 ### Uncertainty, checked
 
@@ -90,13 +90,13 @@ The project walks that question end-to-end:
   <img src="figures/diagnostics_residuals.png" alt="Residual diagnostics for engineered OLS" width="900"/>
 </p>
 
-**Diagnostics for engineered OLS.** Left: residuals vs fitted (structure / heteroscedasticity). Center: residual histogram (approximate symmetry around zero). Right: Cook’s distance vs leverage (influential points). Together they check whether the linear story is behaving before the bake-off tables.
+**Diagnostics for engineered OLS.** Left: residuals vs fitted (structure / heteroscedasticity). Center: residual histogram (approximate symmetry around zero). Right: Cook’s distance vs leverage (influential points).
 
-## Results that sell the story
+## Results
 
-Hold-out **20%** of train (seed 42). Rebuild anytime with `python scripts/run_comparison.py`.
+Hold-out **20%** of train (seed 42). Numbers below come from `python scripts/run_comparison.py`.
 
-### 1. Features beat algorithms (ablation on OLS)
+### Feature ablation (OLS)
 
 | Feature set | RMSE | MAE | R² |
 |---|---:|---:|---:|
@@ -104,9 +104,9 @@ Hold-out **20%** of train (seed 42). Rebuild anytime with `python scripts/run_co
 | Top numeric correlates (\|r\| ≥ 0.5) | $28.2k | $19.3k | 0.844 |
 | **Engineered + OOF encoding + one-hots (46 feats)** | **$21.9k** | **$15.3k** | **0.905** |
 
-Most of the jump is **feature design**, not model choice.
+Most of the gain comes from the feature set, not from switching the estimator.
 
-### 2. Stack edges the field
+### Model comparison
 
 | Model | RMSE | MAE | R² |
 |---|---:|---:|---:|
@@ -116,7 +116,7 @@ Most of the jump is **feature design**, not model choice.
 | OLS / Bayesian MAP | $21.9k | $15.3k | 0.905 |
 | LightGBM (Optuna) | $23.6k | $15.1k | 0.891 |
 
-Production artifact `artifacts/models/best_model.joblib` stores the **best hold-out R²** model (currently the stack).
+`artifacts/models/best_model.joblib` stores the best hold-out R² model (currently the stack).
 
 ## Quick start
 
