@@ -26,6 +26,64 @@ This repo answers that end-to-end:
 
 If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **story you can defend in an interview** — math → leakage → tuning → stack → explain → ship — this is the repo.
 
+## Visual walkthrough
+
+### Data & relationships
+
+<p align="center">
+  <img src="figures/eda_corr_heatmap.png" alt="Correlation heatmap of SalePrice and top features" width="720"/>
+</p>
+
+<p align="center"><em>Strong linear signal from quality, living area, garage, and year fields — the base of the feature ladder.</em></p>
+
+### Classical fits
+
+<p align="center">
+  <img src="figures/ols_fit.png" alt="OLS fit of SalePrice vs GrLivArea" width="720"/>
+</p>
+
+<p align="center">
+  <img src="figures/ridge_cv_curve.png" alt="Ridge lambda selection via cross-validation" width="640"/>
+</p>
+
+<p align="center"><em>From-scratch OLS on living area, and CV-tuned Ridge λ on the log target.</em></p>
+
+### Uncertainty you can check
+
+<p align="center">
+  <img src="figures/bayesian_uncertainty.png" alt="Bayesian predictive mean with uncertainty band" width="720"/>
+</p>
+
+<p align="center">
+  <img src="figures/calibration_curve.png" alt="Bayesian predictive calibration curve" width="480"/>
+</p>
+
+<p align="center"><em>Conjugate Bayesian predictive bands, with empirical coverage close to the diagonal (≈94% at nominal 95%).</em></p>
+
+### Explain & intervalize the tree model
+
+<p align="center">
+  <img src="figures/shap_bar.png" alt="SHAP mean absolute feature importance" width="700"/>
+</p>
+
+<p align="center">
+  <img src="figures/shap_summary.png" alt="SHAP beeswarm summary plot" width="700"/>
+</p>
+
+<p align="center">
+  <img src="figures/quantile_intervals.png" alt="LightGBM quantile prediction intervals vs living area" width="720"/>
+</p>
+
+<p align="center"><em>SHAP shows what drives LightGBM; quantile bands give non-parametric 5–95% intervals.</em></p>
+
+### Residual health
+
+<p align="center">
+  <img src="figures/diagnostics_residuals.png" alt="Residual diagnostics for engineered OLS" width="900"/>
+</p>
+
+<p align="center"><em>Residuals, histogram, and influence for the engineered linear model.</em></p>
+
 ## Results that sell the story
 
 Hold-out **20%** of train (seed 42). Rebuild anytime with `python scripts/run_comparison.py`.
@@ -51,10 +109,6 @@ Most of the jump is **feature design**, not model choice.
 | LightGBM (Optuna) | $23.6k | $15.1k | 0.891 |
 
 Production artifact `artifacts/models/best_model.joblib` stores the **best hold-out R²** model (currently the stack).
-
-<p align="center">
-  <img src="artifacts/shap_bar.png" alt="SHAP mean absolute feature importance" width="720"/>
-</p>
 
 ## Quick start
 
@@ -86,6 +140,7 @@ HousePricePredictor/
 ├── notebooks/                 # 01–11 guided tour (+ archive/)
 ├── scripts/run_comparison.py  # ablation + bake-off + artifacts
 ├── app/streamlit_app.py       # demo UI
+├── figures/                   # README gallery plots
 ├── artifacts/                 # metrics, SHAP, submission, joblib
 ├── docs/
 │   ├── DOCUMENTATION.md       # math, API, design, changelog
@@ -99,6 +154,7 @@ HousePricePredictor/
 | `src/house_price_predictor/` | Features, OLS, Ridge, Bayes, Elastic Net, LightGBM/Optuna, stack, SHAP, quantiles, MCMC, hierarchical Bayes, calibration, diagnostics, persistence, submission |
 | `notebooks/01`–`11` | EDA → models → diagnostics → calibration → hierarchical Bayes → SHAP → quantiles |
 | `notebooks/archive/` | Original educational notebooks (preserved) |
+| `figures/` | Committed plots used in this README |
 | `docs/DOCUMENTATION.md` | Full technical write-up |
 | `docs/MODEL_CARD.md` | Use / misuse / fairness notes |
 
