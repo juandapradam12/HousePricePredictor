@@ -1,8 +1,8 @@
 # House Price Predictor
 
-### Learn the math. Ship the pipeline. Explain the prediction.
+### From the algebra of a price to a prediction you can show.
 
-A portfolio-grade take on the [Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) price problem: **from-scratch linear & Bayesian estimators**, leakage-safe feature engineering, **Optuna-tuned LightGBM**, a **Ridge + LightGBM stack**, SHAP explanations, calibrated uncertainty, and a Dockerized Streamlit demo — all tested and CI-wired.
+House-price modeling on the [Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) dataset: **from-scratch linear & Bayesian estimators**, leakage-safe feature engineering, **Optuna-tuned LightGBM**, a **Ridge + LightGBM stack**, SHAP explanations, calibrated uncertainty, and a Dockerized Streamlit demo — with tests and CI.
 
 <p align="center">
   <img src="figures/saleprice_relationships.png" alt="Sale price vs living area and year built" width="900"/>
@@ -14,17 +14,15 @@ A portfolio-grade take on the [Ames Housing](https://www.kaggle.com/c/house-pric
 
 **Question:** given a house’s attributes in Ames, Iowa, what should it sell for — and how sure are we?
 
-This repo answers that end-to-end:
+The project walks that question end-to-end:
 
-| Layer | What you get |
+| Layer | What is in the repo |
 |---|---|
-| **Understanding** | OLS, Ridge, conjugate Bayes, and MCMC implemented so you can see the algebra |
+| **Models** | OLS, Ridge, conjugate Bayes, and MCMC implemented from the estimators |
 | **Accuracy** | Engineered features + stack → hold-out **R² ≈ 0.91**, RMSE ≈ **$21.4k** |
-| **Trust** | Bayesian predictive coverage ≈ **94%** at nominal 95%; quantile bands for trees |
-| **Explainability** | SHAP beeswarm & bar plots for the boosted model |
-| **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker one-liner |
-
-If you need a black-box Kaggle blitz only, use LightGBM alone. If you need a **story you can defend in an interview** — math → leakage → tuning → stack → explain → ship — this is the repo.
+| **Uncertainty** | Bayesian predictive coverage ≈ **94%** at nominal 95%; quantile bands for trees |
+| **Explanation** | SHAP beeswarm & bar plots for the boosted model |
+| **Delivery** | `joblib` bundle, Kaggle `submission.csv`, Streamlit UI, Docker image |
 
 ## Visual walkthrough
 
@@ -129,7 +127,7 @@ streamlit run app/streamlit_app.py  # interactive demo
 docker compose up --build
 ```
 
-Tip: `HPP_FAST=1 python scripts/run_comparison.py` shortens Optuna (used in CI).
+`HPP_FAST=1` shortens Optuna in `scripts/run_comparison.py` (CI smoke mode).
 
 ## Repository map
 
