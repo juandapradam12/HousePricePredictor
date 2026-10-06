@@ -1,8 +1,8 @@
 # House Price Predictor
 
-### From-scratch linear & Bayesian models, engineered features, Elastic Net, LightGBM, and a Kaggle-ready pipeline on Ames Housing
+### From-scratch linear & Bayesian models → engineered features → Optuna LightGBM → stacking, SHAP & a shippable demo
 
-Predict residential sale prices while *seeing the math* — OLS, ridge, Lasso/Elastic Net, conjugate Bayes, MCMC, and hierarchical neighborhood pooling — then beat the linear ceiling with LightGBM. Includes calibration checks, diagnostics, a Streamlit demo, and a one-command submission CSV.
+Predict Ames sale prices while *seeing the math*, then push accuracy with leakage-safe encoding, tuned boosting, and a Ridge+LightGBM stack. Includes calibration, quantile intervals, SHAP, Streamlit/Docker demo, and a Kaggle submission CSV.
 
 <p align="center">
   <img src="figures/saleprice_relationships.png" alt="Sale price vs living area and year built" width="900"/>
@@ -14,36 +14,40 @@ Predict residential sale prices while *seeing the math* — OLS, ridge, Lasso/El
 
 Most housing tutorials call `model.fit()` and move on. This repo does the opposite:
 
-- **Implements classical estimators by hand** (stable linear algebra, not toy `np.linalg.inv` demos)
-- **Engineers real features** — ordinal qualities, target-encoded `Neighborhood`, `OverallQual × GrLivArea`
-- **Compares an ablation ladder** — 2 raw features → corr≥0.5 → engineered → trees
-- **Quantifies & calibrates uncertainty** — Bayesian intervals with coverage / PIT diagnostics
-- **Ships the full ML loop** — tests, CI, saved `joblib` bundle, Kaggle `submission.csv`, Streamlit app
+- **Implements classical estimators by hand** (stable linear algebra, not toy inverses)
+- **Leakage-safe features** — OOF target-encoded `Neighborhood`, ordinals, one-hots, interactions
+- **Tunes and stacks** — Optuna LightGBM + Ridge→linear meta-learner
+- **Explains predictions** — SHAP beeswarm / bar plots
+- **Quantifies uncertainty** — Bayesian σ and LightGBM quantile bands
+- **Ships the loop** — tests, CI, `joblib` bundle, `submission.csv`, Streamlit + Docker
 
 ## Results at a glance
 
-Hold-out split (20%, seed 42). Re-generate with `python scripts/run_comparison.py`.
+Hold-out 20% (seed 42). Re-run: `python scripts/run_comparison.py`.
 
 ### Feature ablation (OLS)
 
 | Feature set | RMSE | MAE | R² |
 |---|---:|---:|---:|
 | `GrLivArea` + `YearBuilt` | $44.2k | $28.1k | 0.616 |
-| Corr ≥ 0.5 numerics (10) | $28.2k | $19.3k | 0.844 |
-| **Engineered (28 feats)** | **$23.0k** | **$16.2k** | **0.896** |
+| Corr ≥ 0.5 numerics | $28.2k | $19.3k | 0.844 |
+| **Engineered + OOF + one-hot (46)** | **$21.9k** | **$15.3k** | **0.905** |
 
-### Engineered-feature bake-off
+### Model bake-off (engineered features)
 
 | Model | RMSE | MAE | R² |
 |---|---:|---:|---:|
-| **Ridge CV (from scratch)** | **$22.6k** | **$16.1k** | **0.899** |
-| Elastic Net / Lasso (CV) | $22.9k | $16.0k | 0.897 |
-| OLS / Bayesian MAP | $23.0k | $16.2k | 0.896 |
-| LightGBM | $24.8k* | $15.6k | 0.879 |
+| **Stack (Ridge + LightGBM)** | **$21.6k** | **$14.6k** | **0.908** |
+| Ridge CV | $21.7k | $15.3k | 0.908 |
+| Elastic Net / Lasso | $21.9k | $15.3k | 0.906 |
+| OLS / Bayesian MAP | $21.9k | $15.3k | 0.905 |
+| LightGBM (Optuna) | $23.9k | $15.0k | 0.888 |
 
-\*LightGBM wins on MAE here and is kept as the nonlinear baseline; the saved production bundle picks the **best validation R²** model (currently Ridge CV).
+Production bundle = best hold-out R² (currently the **stack**). Bayesian 95% coverage ≈ 0.94; see `08_calibration.ipynb` and `11_quantile_intervals.ipynb`.
 
-Bayesian 95% predictive coverage on the log target ≈ **0.95** (well calibrated); see notebook `08_calibration.ipynb`.
+<p align="center">
+  <img src="artifacts/shap_bar.png" alt="SHAP feature importance" width="720"/>
+</p>
 
 ## Quick start
 
@@ -57,31 +61,36 @@ pip install -e ".[dev,demo]"
 # sudo apt-get install -y python3-dev
 
 pytest -q
-python scripts/run_comparison.py          # metrics + joblib bundle + submission.csv
-streamlit run app/streamlit_app.py        # interactive demo
+python scripts/run_comparison.py          # metrics + SHAP + bundle + submission.csv
+streamlit run app/streamlit_app.py
+
+# or
+docker compose up --build
 ```
+
+`HPP_FAST=1` shortens Optuna for CI smoke tests.
 
 ## What's inside
 
 | Path | Purpose |
 |---|---|
-| `src/house_price_predictor/` | Package: features, OLS, Ridge, Bayes, Elastic Net, LightGBM, MCMC, hierarchical Bayes, calibration, diagnostics, persistence, submission |
-| `notebooks/` | Guided tour `01`–`09` (EDA → models → diagnostics → calibration → hierarchical Bayes) |
-| `notebooks/archive/` | Original educational notebooks |
-| `scripts/run_comparison.py` | Ablation + bake-off + bundle + Kaggle CSV |
-| `app/streamlit_app.py` | Interactive price demo |
-| `tests/` | Unit + integration tests |
-| `.github/workflows/ci.yml` | pytest + comparison smoke test |
-| `docs/DOCUMENTATION.md` | Math, API, design decisions |
-| `artifacts/` | Metrics JSON, `submission.csv`, `models/best_model.joblib` |
+| `src/house_price_predictor/` | Features, models, stacking, SHAP, quantiles, calibration, persistence |
+| `notebooks/` | `01`–`11` guided tour (incl. SHAP & quantiles) |
+| `scripts/run_comparison.py` | Ablation + bake-off + artifacts |
+| `app/streamlit_app.py` | Interactive demo |
+| `Dockerfile` / `docker-compose.yml` | One-command demo |
+| `docs/DOCUMENTATION.md` | Math & API |
+| `docs/MODEL_CARD.md` | Intended use, limits, ethics |
+| `artifacts/` | Metrics, SHAP plots, `submission.csv`, `best_model.joblib` |
 
 ## Feature engineering
 
 ```text
-ordinal qualities  Ex/Gd/TA/Fa/Po → 5..1 (NA → 0)
-Neighborhood       mean target encoding (train-only, rare → global mean)
+ordinals           Ex/Gd/TA/Fa/Po → 5..1
+Neighborhood       OOF target encoding on train (full means for serve-time)
+one-hot            MSZoning, SaleCondition, GarageType
 interaction        OverallQual × GrLivArea
-numeric base       OverallQual, GrLivArea, garage/basement/bath/year, LotArea, …
+numeric base       quality, area, garage, basement, year, LotArea, …
 outliers           GrLivArea > 4000 dropped on train
 target             log1p(SalePrice)
 ```
@@ -90,47 +99,40 @@ target             log1p(SalePrice)
 
 | Model | Idea |
 |---|---|
-| **OLS** | `np.linalg.lstsq` closed form |
-| **Ridge** | L2; intercept unpenalized; 5-fold CV for λ |
-| **Lasso / Elastic Net** | L1 / mixing; CV for α & l1_ratio |
-| **Bayesian MAP** | Gaussian prior → closed-form μ, Σ + predictive σ |
-| **MCMC (PyMC 5)** | NUTS sampling; synthetic recovery + housing |
-| **Hierarchical Bayes** | `α_neigh ~ N(μ_α, τ_α)` partial pooling |
-| **LightGBM** | Nonlinear baseline / production bundle default |
+| **OLS / Ridge / Bayes / MCMC** | From-scratch educational core |
+| **Lasso / Elastic Net** | Sparse shrinkage with CV |
+| **LightGBM + Optuna** | Tuned nonlinear baseline |
+| **Stack** | OOF Ridge + LightGBM → Ridge meta |
+| **Quantile LightGBM** | 5% / 50% / 95% prediction bands |
+| **Hierarchical Bayes** | Neighborhood partial pooling |
 
 ## Example
 
 ```python
-from house_price_predictor import load_housing_data, build_feature_frame, select_elastic_net_cv
+from house_price_predictor import (
+    load_housing_data, build_feature_frame, tune_lightgbm_optuna, StackingRegressor
+)
 from house_price_predictor.submission import make_submission
-import numpy as np
 
 train, test = load_housing_data()
-eng_tr, eng_te = build_feature_frame(train, test, log_target=True)
-model, alpha, l1 = select_elastic_net_cv(eng_tr.X, eng_tr.y)
-print(eng_tr.schema.feature_names, alpha, l1)
-make_submission(model, eng_tr.schema, test, "artifacts/submission.csv")
+eng_tr, eng_te = build_feature_frame(train, test, oof_target_encoding=True)
+lgbm, params, cv = tune_lightgbm_optuna(eng_tr.X, eng_tr.y, n_trials=20)
+stack = StackingRegressor(lgbm_params=params).fit(eng_tr.X, eng_tr.y)
+make_submission(stack, eng_tr.schema, test, "artifacts/submission.csv")
 ```
 
 ## Notebooks
 
-1. Exploratory analysis  
-2. Least squares  
-3. Ridge + CV  
-4. Bayesian regression  
-5. MCMC (PyMC)  
-6. Model comparison  
-7. Diagnostics (residuals, Cook’s D, learning curves)  
-8. Interval calibration (coverage + PIT)  
-9. Hierarchical Bayes by neighborhood  
+1–6 core models · 7 diagnostics · 8 calibration · 9 hierarchical Bayes · **10 SHAP** · **11 quantile intervals**
 
 ## Documentation
 
-Full derivations, API notes, and changelog: **[docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)**.
+- **[docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)** — math, API, changelog  
+- **[docs/MODEL_CARD.md](docs/MODEL_CARD.md)** — intended use & limitations  
 
 ## Data
 
-[Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) (Dean De Cock). `data/test.csv` has no labels — use `artifacts/submission.csv` for challenge upload.
+[Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) (Dean De Cock).
 
 ## License
 

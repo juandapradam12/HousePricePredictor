@@ -1,0 +1,13 @@
+.dockerignore
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ipynb_checkpoints
+notebooks
+figures
+docs
+tests
+*.pdf

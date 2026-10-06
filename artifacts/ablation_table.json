@@ -20,14 +20,14 @@
       "n_features": 10
     },
     {
-      "model": "Ablation: OLS (engineered)",
-      "rmse_usd": 22967.013803017267,
-      "mae_usd": 16175.430176856995,
-      "r2_usd": 0.896113593679349,
-      "rmse_log": 0.12969111620563978,
-      "r2_log": 0.8724062728089792,
-      "feature_set": "engineered",
-      "n_features": 28
+      "model": "Ablation: OLS (engineered+OOF+onehot)",
+      "rmse_usd": 21939.374668918757,
+      "mae_usd": 15309.513657649162,
+      "r2_usd": 0.9052022236871885,
+      "rmse_log": 0.12231215718424093,
+      "r2_log": 0.8865124764253394,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     }
   ]
 }

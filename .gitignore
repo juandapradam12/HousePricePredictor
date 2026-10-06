@@ -35,3 +35,7 @@ artifacts/*.pdf
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+
+!artifacts/shap_summary.png
+!artifacts/shap_bar.png
+!artifacts/quantile_intervals.png

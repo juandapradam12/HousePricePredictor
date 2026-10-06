@@ -2,8 +2,8 @@
 House Price Predictor
 =====================
 
-From-scratch implementations of classical and Bayesian linear models for
-Ames Housing sale-price prediction, with Elastic Net, LightGBM, and PyMC baselines.
+Classical, Bayesian, and gradient-boosted models for Ames Housing prices —
+with leakage-safe feature engineering, Optuna tuning, stacking, and SHAP.
 """
 
 from .data import (
@@ -20,19 +20,29 @@ from .least_squares import LeastSquaresRegressor, least_squares_weights
 from .ridge import RidgeRegressor, ridge_regression_weights, select_lambda_cv
 from .bayesian import BayesianLinearRegression
 from .elastic_net import ElasticNetRegressor, LassoRegressor, select_elastic_net_cv, select_lasso_cv
-from .boosting import LightGBMRegressor, HAS_LIGHTGBM
-from .features import FeatureSchema, build_feature_frame, transform_with_schema
+from .boosting import (
+    HAS_LIGHTGBM,
+    HAS_OPTUNA,
+    LightGBMRegressor,
+    QuantileLightGBM,
+    tune_lightgbm_optuna,
+)
+from .features import FeatureSchema, build_feature_frame, transform_with_schema, target_encode_oof
+from .stacking import StackingRegressor
 
 __all__ = [
     "DEFAULT_FEATURES",
     "HAS_LIGHTGBM",
+    "HAS_OPTUNA",
     "BayesianLinearRegression",
     "ElasticNetRegressor",
     "FeatureSchema",
     "LassoRegressor",
     "LeastSquaresRegressor",
     "LightGBMRegressor",
+    "QuantileLightGBM",
     "RidgeRegressor",
+    "StackingRegressor",
     "apply_cutoffs",
     "build_feature_frame",
     "correlation_with_target",
@@ -47,8 +57,10 @@ __all__ = [
     "select_elastic_net_cv",
     "select_lambda_cv",
     "select_lasso_cv",
+    "target_encode_oof",
     "train_val_split",
     "transform_with_schema",
+    "tune_lightgbm_optuna",
 ]
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

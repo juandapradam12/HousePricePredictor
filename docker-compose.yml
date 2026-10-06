@@ -1,0 +1,9 @@
+services:
+  demo:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # Hot-reload the app while developing (optional)
+      - ./app:/app/app:ro
+      - ./artifacts:/app/artifacts:ro

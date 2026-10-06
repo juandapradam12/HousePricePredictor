@@ -221,6 +221,14 @@ streamlit run app/streamlit_app.py
 
 ## 11. Changelog
 
+### v1.2 — high-value polish
+- Leakage-safe **OOF target encoding** for `Neighborhood`
+- One-hot `MSZoning`, `SaleCondition`, `GarageType`
+- **Optuna** LightGBM tuning + **Ridge+LightGBM stack**
+- SHAP summary/bar plots; quantile LightGBM intervals
+- Model card; Docker / Compose for Streamlit
+- Notebooks `10`–`11`; `HPP_FAST` CI mode
+
 ### v1.1 — full enhancement pass
 - Feature engineering (ordinals, neighborhood encoding, interaction)
 - Lasso / Elastic Net + LightGBM baseline

@@ -27,104 +27,174 @@
     "GarageQual",
     "GarageCond",
     "NeighborhoodEnc",
-    "OverallQual_x_GrLivArea"
+    "OverallQual_x_GrLivArea",
+    "MSZoning__C (all)",
+    "MSZoning__FV",
+    "MSZoning__RH",
+    "MSZoning__RL",
+    "MSZoning__RM",
+    "SaleCondition__Abnorml",
+    "SaleCondition__AdjLand",
+    "SaleCondition__Alloca",
+    "SaleCondition__Family",
+    "SaleCondition__Normal",
+    "SaleCondition__Partial",
+    "GarageType__2Types",
+    "GarageType__Attchd",
+    "GarageType__Basment",
+    "GarageType__BuiltIn",
+    "GarageType__CarPort",
+    "GarageType__Detchd",
+    "GarageType__Missing"
+  ],
+  "oof_target_encoding": true,
+  "onehot_cols": [
+    "MSZoning",
+    "SaleCondition",
+    "GarageType"
   ],
   "ridge_lambda": 58.780160722749116,
   "elastic_net": {
-    "alpha": 0.0023958637194413644,
+    "alpha": 0.0028601261450001752,
     "l1_ratio": 1.0
   },
-  "lasso_alpha": 0.0023958637194413644,
+  "lasso_alpha": 0.0028601261450001752,
+  "lightgbm_optuna": {
+    "best_params": {
+      "objective": "regression",
+      "metric": "rmse",
+      "learning_rate": 0.012260057359187526,
+      "num_leaves": 31,
+      "feature_fraction": 0.6626651653816322,
+      "bagging_fraction": 0.6943386448447411,
+      "bagging_freq": 2,
+      "min_data_in_leaf": 6,
+      "reg_lambda": 3.063462210622083,
+      "verbosity": -1,
+      "reg_alpha": 0.020874681332882276,
+      "seed": 42
+    },
+    "cv_rmse_log": 0.13104448124532733
+  },
   "n_train": 1164,
   "n_val": 292,
   "calibration": {
-    "coverage_50": 0.6095890410958904,
-    "coverage_90": 0.9212328767123288,
-    "coverage_95": 0.9486301369863014,
-    "pit_mean": 0.5193708306332044,
-    "pit_std": 0.2614696075774252,
-    "mean_interval_width_95": 0.5107594672874397
+    "coverage_50": 0.6061643835616438,
+    "coverage_90": 0.9075342465753424,
+    "coverage_95": 0.9417808219178082,
+    "pit_mean": 0.5049776991730107,
+    "pit_std": 0.2615203491745476,
+    "mean_interval_width_95": 0.4871203635710219
+  },
+  "quantile_intervals": {
+    "nominal": 0.9,
+    "empirical_coverage": 0.7568493150684932,
+    "mean_width_log": 0.3411048481913343
+  },
+  "shap_artifacts": {
+    "summary": "/workspace/artifacts/shap_summary.png",
+    "bar": "/workspace/artifacts/shap_bar.png"
   },
   "results": [
     {
       "model": "OLS (from scratch)",
-      "rmse_usd": 22967.013803017267,
-      "mae_usd": 16175.430176856995,
-      "r2_usd": 0.896113593679349,
-      "rmse_log": 0.12969111620563978,
-      "r2_log": 0.8724062728089792,
-      "feature_set": "engineered",
-      "n_features": 28
+      "rmse_usd": 21939.374668918757,
+      "mae_usd": 15309.513657649162,
+      "r2_usd": 0.9052022236871885,
+      "rmse_log": 0.12231215718424093,
+      "r2_log": 0.8865124764253394,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
       "model": "Ridge CV \u03bb=58.8",
-      "rmse_usd": 22619.023146579682,
-      "mae_usd": 16117.489392081725,
-      "r2_usd": 0.8992378674435706,
-      "rmse_log": 0.1291949570899917,
-      "r2_log": 0.8733806756261479,
-      "feature_set": "engineered",
-      "n_features": 28
+      "rmse_usd": 21666.583604730506,
+      "mae_usd": 15295.486530972195,
+      "r2_usd": 0.9075449720084316,
+      "rmse_log": 0.12149179201338654,
+      "r2_log": 0.8880297252780656,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
       "model": "Bayesian MAP",
-      "rmse_usd": 22967.27537363981,
-      "mae_usd": 16175.517885292644,
-      "r2_usd": 0.8961112273476223,
-      "rmse_log": 0.12969168816043805,
-      "r2_log": 0.8724051473964213,
-      "feature_set": "engineered",
-      "n_features": 28
+      "rmse_usd": 21939.49818105603,
+      "mae_usd": 15309.443592741607,
+      "r2_usd": 0.9052011563177583,
+      "rmse_log": 0.12231185058859027,
+      "r2_log": 0.8865130453751203,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
-      "model": "Elastic Net \u03b1=0.0024 l1=1.00",
-      "rmse_usd": 22862.350280276434,
-      "mae_usd": 16003.682273185588,
-      "r2_usd": 0.8970582826383345,
-      "rmse_log": 0.12943093157674784,
-      "r2_log": 0.8729177130202195,
-      "feature_set": "engineered",
-      "n_features": 28
+      "model": "Elastic Net \u03b1=0.00286 l1=1.00",
+      "rmse_usd": 21850.189830178682,
+      "mae_usd": 15253.935037913854,
+      "r2_usd": 0.9059713741714758,
+      "rmse_log": 0.12188999387913288,
+      "r2_log": 0.8872945341934282,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
-      "model": "Lasso \u03b1=0.0024",
-      "rmse_usd": 22862.350280276434,
-      "mae_usd": 16003.682273185588,
-      "r2_usd": 0.8970582826383345,
-      "rmse_log": 0.12943093157674784,
-      "r2_log": 0.8729177130202195,
-      "feature_set": "engineered",
-      "n_features": 28
+      "model": "Lasso \u03b1=0.00286",
+      "rmse_usd": 21850.189830178682,
+      "mae_usd": 15253.935037913854,
+      "r2_usd": 0.9059713741714758,
+      "rmse_log": 0.12188999387913288,
+      "r2_log": 0.8872945341934282,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
       "model": "sklearn LinearRegression",
-      "rmse_usd": 22967.01380300963,
-      "mae_usd": 16175.430176857668,
-      "r2_usd": 0.896113593679418,
-      "rmse_log": 0.12969111620563423,
-      "r2_log": 0.8724062728089901,
-      "feature_set": "engineered",
-      "n_features": 28
+      "rmse_usd": 21939.37467017393,
+      "mae_usd": 15309.513657867423,
+      "r2_usd": 0.9052022236763415,
+      "rmse_log": 0.12231215718544458,
+      "r2_log": 0.8865124764231057,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
       "model": "sklearn Ridge \u03bb=58.8",
-      "rmse_usd": 23396.430004160742,
-      "mae_usd": 16391.384995822893,
-      "r2_usd": 0.8921925311030992,
-      "rmse_log": 0.13261167806401955,
-      "r2_log": 0.8665949072658578,
-      "feature_set": "engineered",
-      "n_features": 28
+      "rmse_usd": 22636.120515336464,
+      "mae_usd": 15844.212229228036,
+      "r2_usd": 0.8990854808057903,
+      "rmse_log": 0.1287219851037135,
+      "r2_log": 0.8743060642529974,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     },
     {
-      "model": "LightGBM",
-      "rmse_usd": 24808.884446437223,
-      "mae_usd": 15626.880581477453,
-      "r2_usd": 0.8787828321073947,
-      "rmse_log": 0.12710376834607368,
-      "r2_log": 0.8774464993614955,
-      "feature_set": "engineered",
-      "n_features": 28
+      "model": "LightGBM (Optuna)",
+      "rmse_usd": 23575.393193712403,
+      "mae_usd": 15129.892133251136,
+      "r2_usd": 0.8905369487474054,
+      "rmse_log": 0.12311614942305775,
+      "r2_log": 0.8850156019769571,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
+    },
+    {
+      "model": "Stack (Ridge+LightGBM)",
+      "rmse_usd": 21376.121117114348,
+      "mae_usd": 14724.432912565735,
+      "r2_usd": 0.91000726237897,
+      "rmse_log": 0.11804703742591706,
+      "r2_log": 0.8942892747746344,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
+    },
+    {
+      "model": "LightGBM quantile (median)",
+      "rmse_usd": 24482.596780671487,
+      "mae_usd": 14797.140800548934,
+      "r2_usd": 0.8819503726806994,
+      "rmse_log": 0.12510442237314542,
+      "r2_log": 0.8812717157403732,
+      "feature_set": "engineered_oof_onehot",
+      "n_features": 46
     }
   ]
 }
