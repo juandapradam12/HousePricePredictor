@@ -8,6 +8,8 @@ House-price modeling on the [Ames Housing](https://www.kaggle.com/c/house-prices
   <img src="figures/saleprice_relationships.png" alt="Sale price vs living area and year built" width="900"/>
 </p>
 
+<p align="center"><em>Sale price rises with living area and with newer construction — two of the strongest raw signals in the data.</em></p>
+
 ---
 
 ## The use case
@@ -32,7 +34,7 @@ The project walks that question end-to-end:
   <img src="figures/eda_corr_heatmap.png" alt="Correlation heatmap of SalePrice and top features" width="720"/>
 </p>
 
-<p align="center"><em>Strong linear signal from quality, living area, garage, and year fields — the base of the feature ladder.</em></p>
+**Correlation heatmap.** Pearson associations between `SalePrice` and the strongest numeric fields. Overall quality, above-grade living area, garage size, basement area, and year built sit at the top of the ladder — the starting point before ordinals, neighborhood encoding, and one-hots enter the pipeline.
 
 ### Classical fits
 
@@ -40,11 +42,13 @@ The project walks that question end-to-end:
   <img src="figures/ols_fit.png" alt="OLS fit of SalePrice vs GrLivArea" width="720"/>
 </p>
 
+**Ordinary least squares.** A closed-form line of `SalePrice` on living area alone. Simple, readable, and already enough to show the main size–price slope (and the scatter that a single feature cannot absorb).
+
 <p align="center">
   <img src="figures/ridge_cv_curve.png" alt="Ridge lambda selection via cross-validation" width="640"/>
 </p>
 
-<p align="center"><em>From-scratch OLS on living area, and CV-tuned Ridge λ on the log target.</em></p>
+**Ridge λ via cross-validation.** Validation RMSE on the log target as a function of the L2 penalty. The dashed line marks the λ chosen by 5-fold CV — shrinkage that keeps the linear story stable when many correlated features sit in the design matrix.
 
 ### Uncertainty, checked
 
@@ -52,27 +56,33 @@ The project walks that question end-to-end:
   <img src="figures/bayesian_uncertainty.png" alt="Bayesian predictive mean with uncertainty band" width="720"/>
 </p>
 
+**Bayesian predictive band.** Posterior predictive mean ± 2σ for a conjugate Gaussian linear model (living area on the x-axis, year built held at its mean). The shaded region is the model’s stated uncertainty on `log1p(SalePrice)`, not just a point fit.
+
 <p align="center">
   <img src="figures/calibration_curve.png" alt="Bayesian predictive calibration curve" width="480"/>
 </p>
 
-<p align="center"><em>Conjugate Bayesian predictive bands, with empirical coverage close to the diagonal (≈94% at nominal 95%).</em></p>
+**Calibration curve.** Nominal coverage (x) versus empirical coverage on hold-out (y). Points near the diagonal mean the Bayesian intervals land about as often as they claim — here ~94% at a nominal 95%.
 
-### Explain & intervalize the tree model
+### What the tree model uses — and how wide it is
 
 <p align="center">
   <img src="figures/shap_bar.png" alt="SHAP mean absolute feature importance" width="700"/>
 </p>
 
+**SHAP mean |impact|.** Global importance for the LightGBM fit: which engineered features move the prediction most, on average, across the sample.
+
 <p align="center">
   <img src="figures/shap_summary.png" alt="SHAP beeswarm summary plot" width="700"/>
 </p>
+
+**SHAP beeswarm.** Each point is one house. Color is feature value (low → high); horizontal position is the effect on the model output. High quality / large area push price up; the spread shows how uneven that effect is across listings.
 
 <p align="center">
   <img src="figures/quantile_intervals.png" alt="LightGBM quantile prediction intervals vs living area" width="720"/>
 </p>
 
-<p align="center"><em>SHAP shows what drives LightGBM; quantile bands give non-parametric 5–95% intervals.</em></p>
+**Quantile intervals (5–95%).** Non-parametric bands from quantile LightGBM against living area: median prediction as the line, shaded range as the interval, scatter as hold-out prices. A second view of uncertainty when conjugacy is dropped.
 
 ### Residual health
 
@@ -80,7 +90,7 @@ The project walks that question end-to-end:
   <img src="figures/diagnostics_residuals.png" alt="Residual diagnostics for engineered OLS" width="900"/>
 </p>
 
-<p align="center"><em>Residuals, histogram, and influence for the engineered linear model.</em></p>
+**Diagnostics for engineered OLS.** Left: residuals vs fitted (structure / heteroscedasticity). Center: residual histogram (approximate symmetry around zero). Right: Cook’s distance vs leverage (influential points). Together they check whether the linear story is behaving before the bake-off tables.
 
 ## Results that sell the story
 
