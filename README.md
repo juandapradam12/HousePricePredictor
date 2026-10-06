@@ -1,6 +1,6 @@
 # House Price Predictor
 
-### From the algebra of a price to a prediction you can show.
+### From the algebra of a price to a prediction on display.
 
 House-price modeling on the [Ames Housing](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) dataset: **from-scratch linear & Bayesian estimators**, leakage-safe feature engineering, **Optuna-tuned LightGBM**, a **Ridge + LightGBM stack**, SHAP explanations, calibrated uncertainty, and a Dockerized Streamlit demo — with tests and CI.
 
@@ -46,7 +46,7 @@ The project walks that question end-to-end:
 
 <p align="center"><em>From-scratch OLS on living area, and CV-tuned Ridge λ on the log target.</em></p>
 
-### Uncertainty you can check
+### Uncertainty, checked
 
 <p align="center">
   <img src="figures/bayesian_uncertainty.png" alt="Bayesian predictive mean with uncertainty band" width="720"/>
@@ -174,7 +174,7 @@ imputation         train medians only
 
 | Model | Why it’s here |
 |---|---|
-| **OLS / Ridge / Bayesian MAP** | Closed-form estimators you can derive and debug |
+| **OLS / Ridge / Bayesian MAP** | Closed-form estimators, derived and checked against sklearn |
 | **MCMC (PyMC 5)** | Posterior sampling when conjugacy is dropped |
 | **Hierarchical Bayes** | Neighborhood partial pooling |
 | **Lasso / Elastic Net** | Sparse shrinkage with CV |
