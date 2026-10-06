@@ -79,7 +79,7 @@ $$
 | Issue | Fix |
 |---|---|
 | MAP used $\lambda\sigma$ instead of $\lambda\sigma^2$ | `map_coefficients` |
-| $\Sigma$ used \$1/\sigma$ vs \$1/\sigma^2$ | `posterior_covariance` |
+| $\Sigma$ used $1/\sigma$ vs $1/\sigma^2$ | `posterior_covariance` |
 | Predict helper missing $\sigma$ | Class API stores $\sigma^2$ on the posterior |
 | Raw-scale isotropic prior | Features standardized in `fit` |
 
