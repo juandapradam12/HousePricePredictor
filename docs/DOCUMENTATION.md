@@ -1,38 +1,41 @@
 # Documentation — House Price Predictor
 
-This document explains the modeling stack, the mathematical corrections made during the revival of this project, the Python API, and how to reproduce results.
+Technical companion to the README. Covers the problem setup, mathematics, feature pipeline, full API surface, design decisions, how to reproduce artifacts, and the project changelog.
+
+**Package version:** 1.2.0
 
 ---
 
 ## 1. Problem statement
 
-Given tabular attributes of residential properties in Ames, Iowa, estimate sale price. The training file contains 1,460 labeled homes and ~80 raw attributes. This project focuses on **linear models you can derive**, plus Elastic Net / LightGBM baselines and hierarchical Bayes so the portfolio also shows a modern end-to-end pipeline.
+Given tabular attributes of residential properties in **Ames, Iowa**, estimate sale price in USD.
 
-We model
+| Item | Value |
+|---|---|
+| Train | 1,460 labeled homes (`data/train.csv`) |
+| Test | 1,459 unlabeled rows (`data/test.csv`) for Kaggle-style submission |
+| Raw attributes | ~80 columns (numeric + categorical) |
+| Target transform | \(\log(1 + \text{SalePrice})\) during training; metrics also reported via `expm1` |
 
-\[
-\log(1 + \text{SalePrice}) \approx w_0 + \sum_{j=1}^{p} w_j x_j
-\]
+**Portfolio framing:** derive classical estimators *and* run a modern pipeline (leakage-safe features → tuned boosting → stack → SHAP → ship).
 
-using features with strong Pearson correlation to the target (\(|r| \ge 0.5\) by default). The log transform reduces right-skew and stabilizes variance; metrics are also reported in USD via `expm1`.
-
-### Default feature set
+Default numeric correlates (\(|r| \ge 0.5\) with `SalePrice`):
 
 `OverallQual`, `GrLivArea`, `GarageCars`, `GarageArea`, `TotalBsmtSF`, `1stFlrSF`, `FullBath`, `TotRmsAbvGrd`, `YearBuilt`, `YearRemodAdd`.
 
+The production feature set expands this with ordinals, OOF neighborhood encoding, one-hots, and an interaction (≈ **46** columns after engineering).
+
 ---
 
-## 2. Algorithms
+## 2. Classical & Bayesian algorithms
 
 ### 2.1 Ordinary least squares
-
-Textbook estimator:
 
 \[
 w_{\mathrm{LS}} = (X^\top X)^{-1} X^\top y
 \]
 
-**Implementation:** `np.linalg.lstsq` on an intercept-augmented design matrix. Equivalent when \(X\) has full column rank, but better conditioned than forming \(X^\top X\) and inverting it.
+**Implementation:** `np.linalg.lstsq` on an intercept-augmented design (equivalent when \(X\) has full column rank; better conditioned than an explicit inverse).
 
 **API:** `LeastSquaresRegressor`, `least_squares_weights`.
 
@@ -42,180 +45,228 @@ w_{\mathrm{LS}} = (X^\top X)^{-1} X^\top y
 w_{\mathrm{RR}} = (X^\top X + \lambda I)^{-1} X^\top y
 \]
 
-**Details:**
-
-- Features are z-scored; the target is mean-centered during fitting.
-- The intercept is **not** penalized (`penalty[0,0] = 0`), matching scikit-learn.
-- \(\lambda\) is chosen by **5-fold cross-validation** minimizing RMSE on the log target (`select_lambda_cv`).
-
-**Why this changed:** the original notebook searched \(\lambda\) by minimizing mean absolute residual on the first 50 rows of training data — not a validation procedure, and easily overfit.
+- Features z-scored; target mean-centered inside `RidgeRegressor`
+- Intercept **unpenalized** (matches scikit-learn)
+- \(\lambda\) via **5-fold CV** minimizing log-target RMSE (`select_lambda_cv`)
 
 **API:** `RidgeRegressor`, `ridge_regression_weights`, `select_lambda_cv`.
 
 ### 2.3 Bayesian linear regression (conjugate Gaussian)
-
-Prior and likelihood:
 
 \[
 p(w) = \mathcal{N}(0, \lambda^{-1} I), \qquad
 p(y \mid w, X) = \mathcal{N}(Xw, \sigma^2 I)
 \]
 
-Posterior:
-
 \[
 \Sigma = \big(\lambda I + \sigma^{-2} X^\top X\big)^{-1}, \qquad
 \mu = \big(\lambda \sigma^2 I + X^\top X\big)^{-1} X^\top y
 \]
 
-Noise level \(\sigma^2\) is estimated from OLS residuals:
-
 \[
 \hat\sigma^2 = \frac{1}{n-d}\sum_{i=1}^{n}(y_i - x_i^\top w_{\mathrm{LS}})^2
 \]
 
-Predictive distribution for a new point \(x_0\):
+Predictive:
 
 \[
 \mu_0 = x_0^\top \mu, \qquad
 \sigma_0^2 = \sigma^2 + x_0^\top \Sigma x_0
 \]
 
-**Bug fixes vs. original notebook:**
+**Bug fixes vs. original notebooks**
 
-| Location | Original issue | Fix |
-|---|---|---|
-| MAP mean | Used \(\lambda \sigma\) instead of \(\lambda \sigma^2\) on the diagonal | `map_coefficients` uses \(\lambda \sigma^2 I\) |
-| Posterior Σ | Divided by `sigma` while the docstring said \(\sigma^2\) | `posterior_covariance` uses \(1/\sigma^2\) |
-| `predict_bayes_reg` | Called `predict` without the required `sigma` argument | Class API bundles σ² in the posterior object |
-| Feature scale | Raw `GrLivArea` / `YearBuilt` with isotropic prior | Features standardized inside `BayesianLinearRegression.fit` |
+| Issue | Fix |
+|---|---|
+| MAP used \(\lambda\sigma\) instead of \(\lambda\sigma^2\) | `map_coefficients` |
+| \(\Sigma\) used \(1/\sigma\) vs \(1/\sigma^2\) | `posterior_covariance` |
+| Predict helper missing \(\sigma\) | Class API stores \(\sigma^2\) on the posterior |
+| Raw-scale isotropic prior | Features standardized in `fit` |
 
-**API:** `BayesianLinearRegression` (`.predict(..., return_std=True)` for intervals).
+**API:** `BayesianLinearRegression.predict(..., return_std=True)`.
 
-### 2.4 MCMC with PyMC 5
+### 2.4 MCMC (PyMC ≥ 5)
 
-When conjugacy is dropped (or for illustration), we sample with NUTS:
+NUTS sampling for illustration / non-conjugate workflows:
 
-- `intercept ~ Normal(mean(y), 10)`
-- `beta ~ Normal(0, 1)` (on standardized features)
-- `sigma ~ HalfNormal(1)` — fixes the original `Normal` prior on a scale parameter that could go negative
-- Likelihood `y ~ Normal(μ, σ)`
+- `intercept ~ Normal(mean(y), ·)`
+- `beta ~ Normal(0, 1)` on standardized features
+- `sigma ~ HalfNormal` (replaces an invalid Normal-on-scale prior from the PyMC3 era)
 
-**Migration:** `pymc3` → `pymc>=5` + ArviZ for traces/posterior plots. Helper: `house_price_predictor.mcmc.fit_bayesian_mcmc`.
+**API:** `house_price_predictor.mcmc.fit_bayesian_mcmc`, `generate_synthetic_regression`.
+
+### 2.5 Hierarchical Bayes by neighborhood
+
+Varying intercept with partial pooling:
+
+\[
+y_i \sim \mathcal{N}(\alpha_{\mathrm{neigh}[i]} + x_i^\top \beta,\ \sigma), \qquad
+\alpha_j \sim \mathcal{N}(\mu_\alpha,\ \tau_\alpha)
+\]
+
+**API:** `fit_hierarchical_neighborhood`, `hierarchical_predict_mean` (notebook `09`).
 
 ---
 
-## 3. Data utilities
+## 3. Feature engineering (`features.py`)
+
+`build_feature_frame(train, other, **opts)` → `(EngineeredData_train, EngineeredData_other)`.
+
+### Pipeline steps
+
+1. Drop train rows with `GrLivArea > 4000`
+2. Map ordinal quality strings (`Ex…Po`) → integers (`NA` → 0)
+3. Median-impute numerics using **train** statistics only
+4. **Out-of-fold target-encode** `Neighborhood` on the training matrix (`oof_target_encoding=True` by default); store full-data means on `FeatureSchema` for `other` / production
+5. Add interaction `OverallQual × GrLivArea`
+6. One-hot `MSZoning`, `SaleCondition`, `GarageType` (levels fit on train)
+7. Build `y = log1p(SalePrice)` when the target is present
+
+`transform_with_schema(frame, schema)` applies a fitted schema to Kaggle test rows or Streamlit inputs.
+
+### Why OOF encoding matters
+
+Fitting neighborhood means on all of `train_part` and then running CV *inside* that matrix leaks target info into validation folds. OOF encoding assigns each training row a mean computed **without** that row’s fold, while serve-time still uses stable full-data means.
+
+### Key helpers
+
+| Symbol | Role |
+|---|---|
+| `FeatureSchema` | Serializable feature contract (names, medians, encodings, one-hot levels) |
+| `EngineeredData` | `X`, `y`, `ids`, `schema`, `frame` |
+| `target_encode_oof` | Standalone OOF encoder |
+| `fit_target_means` / `apply_target_means` | Category → mean maps |
+
+---
+
+## 4. Modern estimators & tooling
+
+| Module | API | Role |
+|---|---|---|
+| `elastic_net.py` | `ElasticNetRegressor`, `LassoRegressor`, `select_elastic_net_cv`, `select_lasso_cv` | Sparse / mixed-norm linear models |
+| `boosting.py` | `LightGBMRegressor`, `tune_lightgbm_optuna`, `QuantileLightGBM` | Tuned trees + quantile bands |
+| `stacking.py` | `StackingRegressor` | OOF Ridge + LightGBM → Ridge meta |
+| `shap_explain.py` | `explain_tree_model`, `save_shap_summary`, `save_shap_bar` | TreeSHAP plots |
+| `calibration.py` | `empirical_coverage`, `calibration_curve`, `pit_values`, `calibration_report` | Interval quality |
+| `diagnostics.py` | residuals, leverage, Cook’s D, learning curves | Linear-model health |
+| `persistence.py` | `save_model_bundle` / `load_model_bundle` | joblib `{model, schema, metadata}` |
+| `submission.py` | `make_submission`, `predict_saleprice` | Kaggle `Id,SalePrice` CSV |
+
+### Optuna LightGBM
+
+`tune_lightgbm_optuna(X, y, n_trials=…, n_splits=3, …)` minimizes k-fold RMSE over learning rate, leaves, regularization, bagging, etc., then refits with early stopping.
+
+### Stacking
+
+1. Build OOF predictions from `RidgeRegressor` and `LightGBMRegressor`
+2. Fit a Ridge meta-model on the OOF matrix
+3. Refit both bases on all training rows for inference
+
+### Quantile intervals
+
+`QuantileLightGBM` fits objectives at 5%, 50%, 95%. Empirical coverage on Ames hold-out is typically **below** the nominal 90% (bands are a bit narrow) — report honest coverage from `artifacts/model_comparison.json` rather than assuming calibration.
+
+---
+
+## 5. Data utilities & metrics
 
 | Function | Role |
 |---|---|
-| `load_housing_data()` | Reads `data/train.csv` and `data/test.csv` |
-| `correlation_with_target` | Pearson correlations (numeric columns only) |
-| `select_correlated_features` | Thresholded feature list (no global state) |
-| `prepare_xy` | Design matrix + optional `log1p` target |
-| `train_val_split` | Reproducible hold-out split |
-| `apply_cutoffs` | Row filters e.g. outlier caps on `GrLivArea` |
+| `load_housing_data()` | Load `data/train.csv` + `data/test.csv` |
+| `correlation_with_target` | Pearson corrs (numeric only) |
+| `select_correlated_features` | Thresholded feature list |
+| `prepare_xy` | Simple numeric design matrix (+ optional `log1p`) |
+| `train_val_split` | Reproducible hold-out |
+| `apply_cutoffs` | Row filters |
 
-**Original bug:** `select_corr_columns(data_frame)` iterated over the global `data` variable. The new helper always uses the frame you pass in.
-
----
-
-## 4. Metrics
-
-Implemented in `house_price_predictor.metrics`:
-
-- `rmse`, `mae`, `r2_score`, `regression_report`
-
-The comparison script reports both log-space and USD-space errors.
+**Metrics** (`metrics.py`): `rmse`, `mae`, `r2_score`, `regression_report`.  
+The comparison script always reports **USD** metrics after `expm1`, plus log-space companions.
 
 ---
 
-## 5. Reproducing results
+## 6. Reproducing results
 
 ```bash
-pip install -e ".[dev]"
-# Linux: install headers once so PyMC/PyTensor can compile extensions
-# sudo apt-get install -y python3-dev
+pip install -e ".[dev,demo]"
+# sudo apt-get install -y python3-dev   # Linux, for PyMC/PyTensor
+
 pytest -q
 python scripts/run_comparison.py
+# HPP_FAST=1 python scripts/run_comparison.py   # shorter Optuna (CI)
+
+streamlit run app/streamlit_app.py
+docker compose up --build
 ```
 
-Notebooks (run from repo root or `notebooks/` — paths auto-detect):
+### Artifacts written by `run_comparison.py`
 
-1. `01_exploratory_analysis.ipynb`
-2. `02_least_squares.ipynb`
-3. `03_ridge_regression.ipynb`
-4. `04_bayesian_regression.ipynb`
-5. `05_mcmc_pymc.ipynb` (slower; sampling)
-6. `06_model_comparison.ipynb`
-7. `07_diagnostics.ipynb`
-8. `08_calibration.ipynb`
-9. `09_hierarchical_bayes.ipynb`
-
-Original notebooks are preserved under `notebooks/archive/` for reference. They expect CSVs in the working directory and `pymc3`; prefer the new package for anything you extend.
-
----
-
-## 6. Feature engineering (`features.py`)
-
-`build_feature_frame(train, other)` returns aligned `EngineeredData` objects:
-
-1. Drop `GrLivArea > 4000` on train
-2. Map ordinal quality columns (`Ex…Po`) to integers
-3. Median-impute numerics from train statistics
-4. Target-encode `Neighborhood` (rare / unseen → global mean)
-5. Add `OverallQual × GrLivArea`
-6. Optional `log1p` target
-
-`transform_with_schema` applies a fitted `FeatureSchema` to Kaggle test rows.
-
----
-
-## 7. Additional estimators
-
-| Module | API |
+| Path | Contents |
 |---|---|
-| `elastic_net.py` | `ElasticNetRegressor`, `LassoRegressor`, `select_elastic_net_cv`, `select_lasso_cv` |
-| `boosting.py` | `LightGBMRegressor` (optional if LightGBM installed) |
-| `hierarchical.py` | `fit_hierarchical_neighborhood`, `hierarchical_predict_mean` |
-| `calibration.py` | coverage, calibration curve, PIT, `calibration_report` |
-| `diagnostics.py` | residuals, leverage, Cook’s distance, learning curves |
-| `persistence.py` | `save_model_bundle` / `load_model_bundle` (joblib) |
-| `submission.py` | `make_submission` → `Id,SalePrice` CSV |
+| `artifacts/model_comparison.json` | Metrics, calibration, Optuna params, quantile stats |
+| `artifacts/ablation_table.json` | Feature-set ladder |
+| `artifacts/models/best_model.joblib` | Best hold-out R² model + schema |
+| `artifacts/submission.csv` | Kaggle upload file |
+| `artifacts/shap_summary.png` / `shap_bar.png` | Interpretability plots |
+
+### Notebooks
+
+| # | File | Focus |
+|---|---|---|
+| 01 | `01_exploratory_analysis.ipynb` | EDA |
+| 02 | `02_least_squares.ipynb` | OLS |
+| 03 | `03_ridge_regression.ipynb` | Ridge + CV |
+| 04 | `04_bayesian_regression.ipynb` | Conjugate Bayes |
+| 05 | `05_mcmc_pymc.ipynb` | PyMC NUTS |
+| 06 | `06_model_comparison.ipynb` | Bake-off entrypoint |
+| 07 | `07_diagnostics.ipynb` | Residuals / influence |
+| 08 | `08_calibration.ipynb` | Coverage + PIT |
+| 09 | `09_hierarchical_bayes.ipynb` | Partial pooling |
+| 10 | `10_shap_interpretability.ipynb` | SHAP |
+| 11 | `11_quantile_intervals.ipynb` | Quantile bands |
+
+Original notebooks live under `notebooks/archive/` (legacy paths / `pymc3`). Prefer the package + numbered notebooks.
 
 ---
 
-## 8. Design decisions
+## 7. Design decisions
 
-1. **From-scratch + sklearn / LightGBM checks** — educational core with a clear performance ceiling.
-2. **Package under `src/`** — notebooks stay thin; logic is importable and tested.
-3. **Log target by default** — standard for this dataset; disable with `log_target=False`.
-4. **Train-only encoding stats** — neighborhood means and medians never leak from validation/test.
-5. **Production bundle** picks the best hold-out model by USD R² (often Ridge or Elastic Net on this feature set).
-6. **CI** runs pytest + `scripts/run_comparison.py` on pushes/PRs.
+1. **From-scratch + library baselines** — interview-ready math with sklearn / LightGBM parity checks.
+2. **`src/` layout** — importable, tested logic; thin notebooks.
+3. **`log1p` target by default** — standard for skewed prices.
+4. **OOF neighborhood encoding** — no target leakage into CV folds on the train matrix.
+5. **Production bundle = best hold-out R²** — currently the Ridge+LightGBM stack on this split.
+6. **Honest uncertainty** — publish empirical coverage (Bayesian ≈ well-calibrated; quantiles often undercover).
+7. **CI** — pytest + `HPP_FAST=1` comparison smoke on PRs.
+8. **Docker** — reproducible Streamlit demo without local dependency friction.
 
 ---
 
-## 9. App & submission
+## 8. App, Docker, submission
 
 ```bash
 python scripts/run_comparison.py
-# → artifacts/model_comparison.json
-# → artifacts/ablation_table.json
-# → artifacts/models/best_model.joblib
-# → artifacts/submission.csv
-
 streamlit run app/streamlit_app.py
+docker compose up --build   # http://localhost:8501
 ```
+
+The Streamlit app loads `artifacts/models/best_model.joblib` when present; otherwise it falls back to a quick Bayesian MAP fit. Unspecified columns are filled with training medians — **demo only**, not a complete listing form.
 
 ---
 
-## 10. Limitations
+## 9. Limitations
 
-- LightGBM hyperparameters are sensible defaults, not a full Optuna sweep.
-- Hierarchical Bayes notebook subsamples for interactive runtime.
-- Streamlit demo uses medians for unspecified columns — illustrative, not a full form for every Ames field.
-- Target encoding can overfit small neighborhoods; CV-aware encoding is a natural follow-up.
+- Ames-only; not transferable to other markets without retraining.
+- ~1.5k rows: linear models remain highly competitive; boosting alone may not dominate R².
+- Quantile 5–95% bands can undercover vs nominal 90% — check JSON before claiming calibration.
+- Hierarchical Bayes / MCMC notebooks subsample for interactive runtime.
+- Neighborhood / zoning features can proxy sensitive structure; see the model card.
+- No formal hyperparameter nested CV around the full stack (Optuna is inner-CV on LightGBM only).
+
+---
+
+## 10. Related: model card
+
+Operational intended-use, ethics, and maintenance notes: **[MODEL_CARD.md](MODEL_CARD.md)**.
 
 ---
 
@@ -224,23 +275,20 @@ streamlit run app/streamlit_app.py
 ### v1.2 — high-value polish
 - Leakage-safe **OOF target encoding** for `Neighborhood`
 - One-hot `MSZoning`, `SaleCondition`, `GarageType`
-- **Optuna** LightGBM tuning + **Ridge+LightGBM stack**
-- SHAP summary/bar plots; quantile LightGBM intervals
-- Model card; Docker / Compose for Streamlit
-- Notebooks `10`–`11`; `HPP_FAST` CI mode
+- **Optuna** LightGBM + **Ridge+LightGBM stack**
+- SHAP plots; quantile LightGBM intervals
+- Model card; Docker / Compose; notebooks `10`–`11`
+- `HPP_FAST` CI mode
 
-### v1.1 — full enhancement pass
+### v1.1 — enhancement pass
 - Feature engineering (ordinals, neighborhood encoding, interaction)
 - Lasso / Elastic Net + LightGBM baseline
-- Bayesian calibration tools + diagnostics
-- Hierarchical Bayes by neighborhood
+- Calibration + diagnostics; hierarchical Bayes
 - joblib persistence, Kaggle submission, Streamlit demo
-- GitHub Actions CI; ablation table in comparison script
-- Notebooks 07–09
+- GitHub Actions CI; ablation table; notebooks `07`–`09`
 
 ### v1.0 — revival
 - Installable package, tests, requirements, comparison CLI
 - Fixed Bayesian σ² algebra and ridge λ selection
-- Expanded features beyond `GrLivArea` + `YearBuilt`
-- Migrated MCMC stack to PyMC 5
-- Selling README + documentation; archived original notebooks
+- Broader default features; PyMC 3 → 5
+- Selling README + documentation; archived originals
